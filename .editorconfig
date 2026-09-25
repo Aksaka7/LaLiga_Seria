@@ -1,0 +1,5 @@
+# Türkçe harfler bozulmasın: tüm kod dosyaları BOM'lu UTF-8 kaydedilsin
+root = true
+
+[*.{cs,cshtml,css,js,json}]
+charset = utf-8-bom
