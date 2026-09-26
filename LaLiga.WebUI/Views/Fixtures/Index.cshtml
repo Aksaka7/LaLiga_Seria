@@ -1,0 +1,259 @@
+﻿@model FixturesPageViewModel
+@{
+    ViewData["Title"] = $"{Model.LeagueName} Fikstür";
+    ViewData["BodyClass"] = "fixtures-page";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/fixtures.css" asp-append-version="true" />
+}
+
+<main class="fixtures-shell container-xl">
+
+    <!--  _FixturesHero  -->
+    <header class="fixtures-hero">
+        <div class="hero-league">
+            <span class="hero-league__name"><span class="league-mark" aria-hidden="true">@Model.LeagueMark</span>@Model.Country, @Model.LeagueName</span>
+            <label class="season-select">
+                <span class="visually-hidden">Sezon</span>
+                <select aria-label="Sezon seç">
+                    <option selected>@Model.Season</option>
+                </select>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+            </label>
+        </div>
+        <div class="hero-row">
+            <div>
+                <h1 class="hero-title">@Model.LeagueName Fikstür</h1>
+                <p class="hero-subtitle">Haftayı seç, o haftanın tüm maçlarını gün gün, skor ve durum bilgisiyle gör.</p>
+            </div>
+            <dl class="hero-meta">
+                <div><dt>Takım</dt><dd>@Model.TeamCount</dd></div>
+                <div><dt>Hafta</dt><dd>@Model.TotalWeeks</dd></div>
+                <div><dt>Güncel hafta</dt><dd>@Model.CurrentWeek</dd></div>
+            </dl>
+        </div>
+    </header>
+
+    <!--  _WeekSelector  -->
+    <form method="get" asp-action="Index">
+        <nav class="week-nav" aria-label="Hafta seçici">
+            <button type="submit" name="hafta" value="@Model.PrevWeek" class="week-arrow" aria-label="Önceki hafta" disabled="@(Model.PrevWeek is null)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+            </button>
+            <ul class="week-list">
+                @foreach (var w in Model.VisibleWeeks)
+                {
+                    <li>
+                        <button type="submit" name="hafta" value="@w.Week" class="week-btn" aria-pressed="@(w.Week == Model.SelectedWeek ? "true" : "false")">
+                            <span class="week-btn__top">
+                                <span class="week-btn__title">@w.Week. Hafta</span>
+                                @if (w.Week == Model.CurrentWeek)
+                                {
+                                    <span class="week-tag week-tag--current">Güncel</span>
+                                }
+                                <span class="week-tag week-tag--active">Aktif hafta</span>
+                            </span>
+                            <span class="week-btn__range">@Model.WeekRange(w)</span>
+                        </button>
+                    </li>
+                }
+            </ul>
+            <button type="submit" name="hafta" value="@Model.NextWeek" class="week-arrow" aria-label="Sonraki hafta" disabled="@(Model.NextWeek is null)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+            </button>
+        </nav>
+    </form>
+
+    <!--  _WeekInfo  -->
+    @if (Model.SelectedWeekInfo is { } week)
+    {
+        <section class="panel week-info" aria-live="polite">
+            <div>
+                <h2 class="week-info__title">@Model.SelectedWeek. Hafta</h2>
+                <p class="week-info__range">@Model.WeekRange(week)</p>
+            </div>
+            <ul class="week-facts">
+                <li><strong>@Model.Total</strong>maç</li>
+                <li><strong>@Model.TeamCount</strong>takım</li>
+                <li><strong>@Model.Goals</strong>gol</li>
+                @if (Model.LiveCount > 0)
+                {
+                    <li><strong>@Model.LiveCount</strong>canlı</li>
+                }
+            </ul>
+            <div class="week-progress">
+                <div class="week-progress__head"><span>Hafta ilerlemesi</span><strong>@Model.DoneText</strong></div>
+                <div class="week-progress__bar" aria-hidden="true">
+                    @foreach (var m in Model.OrderedMatches)
+                    {
+                        <span class="seg seg--@m.Status" title="@m.HomeTeamName - @m.AwayTeamName: @Model.StatusWord(m.Status)"></span>
+                    }
+                </div>
+                <div class="week-progress__legend" aria-hidden="true">
+                    <span><i style="background:rgba(31,201,138,.6)"></i>Bitti</span>
+                    <span><i style="background:var(--green)"></i>Canlı</span>
+                    <span><i></i>Başlamadı</span>
+                    <span><i style="background:var(--amber)"></i>Ertelendi</span>
+                </div>
+            </div>
+        </section>
+    }
+
+    <div class="fixtures-body">
+        <div class="row g-4">
+            <div class="col-lg-8">
+
+                <!--  Haftanın maçları  -->
+                <section class="panel" aria-labelledby="fixtures-title">
+                    <div class="panel__head">
+                        <h2 class="panel__title" id="fixtures-title">Haftanın maçları</h2>
+                        <span class="panel__sub">Saatler Türkiye saatine göre</span>
+                    </div>
+                    <div class="fixtures-list">
+                        @if (Model.Matches.Count == 0)
+                        {
+                            <p class="page-note">Bu hafta için henüz fikstür yayımlanmadı.</p>
+                        }
+
+                        @foreach (var day in Model.Days)
+                        {
+                            <section class="day-group" aria-label="@Model.DayTitle(day.Key)">
+                                <div class="day-head">
+                                    <h3 class="day-head__date">@Model.DayTitle(day.Key)</h3>
+                                    <span class="day-head__count">@day.Count() maç</span>
+                                </div>
+                                <ul class="day-list">
+                                    @foreach (var m in day)
+                                    {
+                                        var homeCrest = Model.HomeCrestOf(m);
+                                        var awayCrest = Model.AwayCrestOf(m);
+
+                                        <!--  _FixtureCard  -->
+                                        <li>
+                                            <article class="fixture-card fixture-card--@m.Status @(Model.IsLinked(m) ? "is-linked" : "")">
+                                                <div class="fx-meta">
+                                                    <time class="fx-time" datetime="@Model.IsoTime(m.MatchDate)">@Model.TimeText(m.MatchDate)</time>
+                                                    <span class="status status--@m.Status">@Model.StatusLabel(m)</span>
+                                                </div>
+                                                <div class="fx-team fx-team--home @Model.HomeResultClass(m)"><span class="fx-name" title="@m.HomeTeamName">@m.HomeTeamName</span><partial name="_TeamCrest" model="homeCrest" /></div>
+
+                                                @if (Model.ShowsScore(m))
+                                                {
+                                                    <div class="fx-score" aria-label="Skor @m.HomeScore-@m.AwayScore"><span>@m.HomeScore</span><span class="fx-score__sep" aria-hidden="true"></span><span>@m.AwayScore</span></div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="fx-score fx-score--empty" aria-label="Skor yok">-</div>
+                                                }
+
+                                                <div class="fx-team fx-team--away @Model.AwayResultClass(m)"><partial name="_TeamCrest" model="awayCrest" /><span class="fx-name" title="@m.AwayTeamName">@m.AwayTeamName</span></div>
+                                                <div class="fx-action">
+                                                    @if (Model.IsLinked(m))
+                                                    {
+                                                        <a class="fx-link" href="@Model.DetailUrl(m)">@Model.LinkText(m)<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg></a>
+                                                    }
+                                                    else if (m.Status == MatchStatus.Postponed)
+                                                    {
+                                                        <span>@(string.IsNullOrWhiteSpace(m.Note) ? "Yeni tarih bekleniyor" : m.Note)</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>@m.Stadium</span>
+                                                    }
+                                                </div>
+                                            </article>
+                                        </li>
+                                    }
+                                </ul>
+                            </section>
+                        }
+                    </div>
+                </section>
+            </div>
+
+            <aside class="col-lg-4" aria-label="Haftanın özeti ve öne çıkan maç">
+                <div class="side-stack">
+
+                    <!--  _WeeklySummary  -->
+                    @if (Model.HasWeek)
+                    {
+                        <section class="panel" aria-labelledby="summary-title">
+                            <div class="panel__head"><h2 class="panel__title" id="summary-title">@Model.SelectedWeek. Hafta özeti</h2></div>
+                            <dl class="summary-list">
+                                <div><dt>Maç</dt><dd>@Model.Total</dd></div>
+                                <div><dt>Tamamlanan</dt><dd>@Model.FinishedCount</dd></div>
+                                <div><dt>Gol</dt><dd>@Model.Goals</dd></div>
+                                <div><dt>Maç başına gol</dt><dd>@Model.AverageGoals</dd></div>
+                                <div><dt>Beraberlik</dt><dd>@Model.Draws</dd></div>
+                                <div><dt>Ev sahibi galibiyeti</dt><dd>@Model.HomeWins</dd></div>
+                                <div><dt>Deplasman galibiyeti</dt><dd>@Model.AwayWins</dd></div>
+                            </dl>
+                            <div class="result-split">
+                                <span class="result-split__title">Sonuç dağılımı</span>
+                                @if (Model.FinishedCount > 0)
+                                {
+                                    <div class="result-split__bar" aria-hidden="true">
+                                        <span class="r-home" style="flex:@Model.HomeWins"></span>
+                                        <span class="r-draw" style="flex:@Model.Draws"></span>
+                                        <span class="r-away" style="flex:@Model.AwayWins"></span>
+                                    </div>
+                                    <div class="result-split__legend">
+                                        <span><i style="background:var(--blue)"></i>Ev @Model.HomeWins</span>
+                                        <span><i style="background:var(--dim)"></i>Beraberlik @Model.Draws</span>
+                                        <span><i style="background:var(--ice)"></i>Deplasman @Model.AwayWins</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="result-split__legend"><span>Henüz tamamlanan maç yok</span></div>
+                                }
+                            </div>
+                            <p class="summary-note">Gol sayısına canlı maçlar dahildir, sonuçlar yalnızca biten maçlardan hesaplanır.</p>
+                        </section>
+                    }
+
+                    <!--  _FeaturedMatch  -->
+                    @if (Model.Featured is { } featured)
+                    {
+                        var homeCrest = Model.HomeCrestOf(featured, "team-crest--lg");
+                        var awayCrest = Model.AwayCrestOf(featured, "team-crest--lg");
+
+                        <section class="panel featured" aria-labelledby="featured-title">
+                            <div class="panel__head"><h2 class="panel__title" id="featured-title">Haftanın öne çıkan maçı</h2></div>
+                            <div class="featured__body">
+                                <div class="featured__teams">
+                                    <div class="featured__team"><partial name="_TeamCrest" model="homeCrest" /><span>@featured.HomeTeamName</span></div>
+
+                                    @if (Model.ShowsScore(featured))
+                                    {
+                                        <span class="featured__score">@featured.HomeScore-@featured.AwayScore</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="featured__score featured__score--vs">vs</span>
+                                    }
+
+                                    <div class="featured__team"><partial name="_TeamCrest" model="awayCrest" /><span>@featured.AwayTeamName</span></div>
+                                </div>
+                                <ul class="featured__info">
+                                    <li>@featured.Stadium</li>
+                                    <li><span>@Model.WeekdayText(featured.MatchDate), @Model.DayMonthText(featured.MatchDate)</span> @Model.TimeText(featured.MatchDate)</li>
+                                </ul>
+                                <div class="featured__foot">
+                                    <span class="status status--@featured.Status">@Model.StatusLabel(featured)</span>
+                                    @if (Model.IsLinked(featured))
+                                    {
+                                        <a class="fx-link" href="@Model.DetailUrl(featured)">Maç detayı<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg></a>
+                                    }
+                                </div>
+                            </div>
+                        </section>
+                    }
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <p class="page-note">Sayfadaki veriler demo amaçlıdır.</p>
+</main>

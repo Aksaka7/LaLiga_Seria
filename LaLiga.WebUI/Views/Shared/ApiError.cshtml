@@ -1,0 +1,14 @@
+﻿@model ApiErrorViewModel
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<main class="container py-5" style="max-width: 640px;">
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <h1 class="h4">@Model.Title</h1>
+            <p class="mb-3">@Model.Message</p>
+            <a class="btn btn-primary" href="/">Ana sayfaya dön</a>
+        </div>
+    </div>
+</main>

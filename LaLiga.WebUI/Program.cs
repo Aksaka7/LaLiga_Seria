@@ -1,4 +1,5 @@
-﻿using LaLiga.WebUI.Services;
+﻿using LaLiga.WebUI.Filters;
+using LaLiga.WebUI.Services;
 using LaLiga.WebUI.Settings;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,7 +17,11 @@ builder.Services.AddHttpClient<LaLigaApiClient>(client =>
     client.Timeout = TimeSpan.FromSeconds(15);
 });
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    // API'den gelen hataları (ApiException) tek yerden anlaşılır hata sayfasına çevirir
+    options.Filters.Add<ApiExceptionFilter>();
+});
 
 var app = builder.Build();
 
@@ -37,6 +42,6 @@ app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+        pattern: "{controller=Standings}/{action=Index}/{id?}");
 
 app.Run();

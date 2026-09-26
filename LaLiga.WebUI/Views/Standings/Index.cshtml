@@ -1,0 +1,268 @@
+﻿@model StandingsPageViewModel
+@{
+    ViewData["Title"] = $"{Model.LeagueName} Puan Durumu";
+    ViewData["BodyClass"] = "standings-page";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/standings.css" asp-append-version="true" />
+}
+
+<main class="standings-shell container-xl" data-standings>
+
+    <!--  _StandingsHero  -->
+    <header class="standings-hero">
+        <div class="hero-top">
+            <div>
+                <div class="hero-league"><span class="league-mark" aria-hidden="true">@Model.LeagueMark</span>@Model.Country, @Model.LeagueName</div>
+                <h1 class="hero-title">@Model.LeagueName Puan Durumu</h1>
+                <p class="hero-subtitle">@Model.CurrentWeek. hafta itibarıyla güncel sıralama, gol dengesi ve son 5 maçlık form durumu.</p>
+            </div>
+            <dl class="hero-meta">
+                <div><dt>Sezon</dt><dd>@Model.Season</dd></div>
+                <div><dt>Hafta</dt><dd>@Model.CurrentWeek</dd></div>
+                <div><dt>Takım sayısı</dt><dd>@Model.TeamCount</dd></div>
+            </dl>
+        </div>
+
+        <!-- _PointsLadder -->
+        <section class="points-ladder" aria-labelledby="ladder-title">
+            <div class="ladder-head">
+                <h2 class="ladder-title" id="ladder-title">Puan dağılımı</h2>
+                <p class="ladder-hint">Tabloda görmek için bir takıma dokun</p>
+            </div>
+            <div class="ladder-scroll">
+                <div class="ladder-track" style="height:@(Model.LadderTrackHeight)px">
+                    <span class="ladder-axis" aria-hidden="true"></span>
+
+                    @foreach (var tick in Model.LadderTicks)
+                    {
+                        <span class="ladder-tick" style="--x:@Model.LadderX(tick)">@tick</span>
+                    }
+
+                    @foreach (var t in Model.Standings)
+                    {
+                        var crest = Model.CrestOf(t, "team-crest--sm");
+
+                        <button type="button" class="ladder-marker @Model.ZoneClassOf(t.Position)"
+                                style="--x:@Model.LadderX(t.Points);--stack:@Model.StackOf(t);--i:@(Model.TeamCount - t.Position)"
+                                data-ladder-team="@t.Code.ToLowerInvariant()" aria-pressed="false"
+                                aria-label="@t.TeamName, @t.Position. sıra, @t.Points puan" title="@t.TeamName: @t.Points puan">
+                            <partial name="_TeamCrest" model="crest" />
+                        </button>
+                    }
+                </div>
+            </div>
+        </section>
+    </header>
+
+    <!--  _SummaryCards  -->
+    <section class="summary-section" aria-label="Öne çıkanlar">
+        <div class="row g-3">
+
+            @if (Model.Leader is { } leader)
+            {
+                <div class="col-sm-6 col-xl-3">
+                    <article class="stat-card stat-card--leader">
+                        <div class="stat-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z" /><path d="M8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3M12 13v4M9 20h6" /></svg></div>
+                        <div class="stat-card__body">
+                            <p class="stat-card__label">Lider</p>
+                            <p class="stat-card__team"><partial name="_TeamCrest" model="Model.CrestOf(leader, string.Empty)" />@leader.TeamName</p>
+                            <p class="stat-card__note">İkinciyle arası: @Model.LeaderGap puan</p>
+                        </div>
+                        <p class="stat-card__value">@leader.Points<small>puan</small></p>
+                    </article>
+                </div>
+            }
+
+            @if (Model.BestAttack is { } attack)
+            {
+                <div class="col-sm-6 col-xl-3">
+                    <article class="stat-card stat-card--attack">
+                        <div class="stat-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.6l3.3 2.4-1.3 3.8h-4l-1.3-3.8z" /></svg></div>
+                        <div class="stat-card__body">
+                            <p class="stat-card__label">En çok gol atan</p>
+                            <p class="stat-card__team"><partial name="_TeamCrest" model="Model.CrestOf(attack, string.Empty)" />@attack.TeamName</p>
+                            <p class="stat-card__note">Maç başına @Model.PerMatch(attack.GoalsFor, attack.Played) gol</p>
+                        </div>
+                        <p class="stat-card__value">@attack.GoalsFor<small>gol</small></p>
+                    </article>
+                </div>
+            }
+
+            @if (Model.BestDefence is { } defence)
+            {
+                <div class="col-sm-6 col-xl-3">
+                    <article class="stat-card stat-card--defence">
+                        <div class="stat-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" /></svg></div>
+                        <div class="stat-card__body">
+                            <p class="stat-card__label">En az gol yiyen</p>
+                            <p class="stat-card__team"><partial name="_TeamCrest" model="Model.CrestOf(defence, string.Empty)" />@defence.TeamName</p>
+                            <p class="stat-card__note">Maç başına @Model.PerMatch(defence.GoalsAgainst, defence.Played) gol</p>
+                        </div>
+                        <p class="stat-card__value">@defence.GoalsAgainst<small>gol</small></p>
+                    </article>
+                </div>
+            }
+
+            @if (Model.RelegationStart is { } danger)
+            {
+                <div class="col-sm-6 col-xl-3">
+                    <article class="stat-card stat-card--danger">
+                        <div class="stat-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7l6 6 4-4 6 6M20 10v5h-5" /></svg></div>
+                        <div class="stat-card__body">
+                            <p class="stat-card__label">Düşme hattı başlangıcı</p>
+                            <p class="stat-card__team"><partial name="_TeamCrest" model="Model.CrestOf(danger, string.Empty)" />@danger.TeamName</p>
+                            <p class="stat-card__note">@danger.Points puan, kurtuluşa @Model.SafetyGap puan</p>
+                        </div>
+                        <p class="stat-card__value">@(danger.Position).<small>sıra</small></p>
+                    </article>
+                </div>
+            }
+
+        </div>
+    </section>
+
+    <div class="standings-body">
+        <div class="row g-4">
+            <div class="col-xl-9">
+
+                <!--  _StandingsTable  -->
+                <section class="table-panel" aria-labelledby="table-title">
+                    <div class="table-toolbar">
+                        <h2 class="table-toolbar__title" id="table-title">Genel sıralama</h2>
+                        <div class="table-toolbar__controls">
+                            <div class="zone-filter" role="group" aria-label="Bölgeye göre filtrele">
+                                <button type="button" class="zone-chip zone-chip--all" data-zone-filter="all" aria-pressed="true">Tümü</button>
+                                <button type="button" class="zone-chip zone-chip--ucl" data-zone-filter="ucl" aria-pressed="false">Şampiyonlar Ligi</button>
+                                <button type="button" class="zone-chip zone-chip--europe" data-zone-filter="europe" aria-pressed="false">Avrupa</button>
+                                <button type="button" class="zone-chip zone-chip--rel" data-zone-filter="rel" aria-pressed="false">Düşme hattı</button>
+                            </div>
+                            <label class="team-search">
+                                <span class="visually-hidden">Takım ara</span>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M20 20l-4-4" /></svg>
+                                <input type="search" placeholder="Takım ara" autocomplete="off" data-team-search>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="standings-table-wrap">
+                        <table class="standings-table">
+                            <caption class="visually-hidden">@Model.LeagueName @Model.Season, @Model.CurrentWeek. hafta puan durumu</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="col-pos">#</th>
+                                    <th scope="col" class="col-team">Takım</th>
+                                    <th scope="col" class="col-num"><abbr title="Oynanan maç">O</abbr></th>
+                                    <th scope="col" class="col-num"><abbr title="Galibiyet">G</abbr></th>
+                                    <th scope="col" class="col-num"><abbr title="Beraberlik">B</abbr></th>
+                                    <th scope="col" class="col-num"><abbr title="Mağlubiyet">M</abbr></th>
+                                    <th scope="col" class="col-num col-hide-sm"><abbr title="Atılan gol">AG</abbr></th>
+                                    <th scope="col" class="col-num col-hide-sm"><abbr title="Yenilen gol">YG</abbr></th>
+                                    <th scope="col" class="col-gd"><abbr title="Averaj">AV</abbr></th>
+                                    <th scope="col" class="col-pts">Puan</th>
+                                    <th scope="col" class="col-form">Son 5 maç</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var t in Model.Standings)
+                                {
+                                    var crest = Model.CrestOf(t);
+
+                                    <tr class="standings-row @Model.ZoneClassOf(t.Position) @Model.EdgeOf(t.Position)"
+                                        data-team="@t.Code.ToLowerInvariant()" data-team-name="@t.TeamName" data-zone="@Model.ZoneOf(t.Position)" tabindex="0">
+                                        <td class="col-pos">@t.Position</td>
+                                        <th scope="row" class="col-team">
+                                            <div class="team-cell"><partial name="_TeamCrest" model="crest" /><span class="team-name">@t.TeamName</span></div>
+                                        </th>
+                                        <td class="col-num">@t.Played</td>
+                                        <td class="col-num">@t.Won</td>
+                                        <td class="col-num">@t.Drawn</td>
+                                        <td class="col-num">@t.Lost</td>
+                                        <td class="col-num col-hide-sm">@t.GoalsFor</td>
+                                        <td class="col-num col-hide-sm">@t.GoalsAgainst</td>
+                                        <td class="col-gd"><span class="gd @StandingsPageViewModel.GdClass(t.GoalDifference)">@StandingsPageViewModel.GdText(t.GoalDifference)</span></td>
+                                        <td class="col-pts">@t.Points</td>
+                                        <td class="col-form">
+                                            @if (t.Form.Count == 0)
+                                            {
+                                                <span>-</span>
+                                            }
+                                            else
+                                            {
+                                                <ol class="form-list" aria-label="@StandingsPageViewModel.FormLabel(t)">
+                                                    @foreach (var result in t.Form)
+                                                    {
+                                                        <li><span class="form-badge form-badge--@result.ToLowerInvariant()" title="@StandingsPageViewModel.FormWord(result)">@StandingsPageViewModel.FormLetter(result)</span></li>
+                                                    }
+                                                </ol>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+
+                                <tr class="empty-row" data-empty-row hidden>
+                                    <td colspan="11"><strong>Bu filtreyle eşleşen takım yok</strong>Aramayı temizle ya da “Tümü” filtresini seç.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-foot">
+                        <span>Gösterilen takım: <strong data-visible-count>@Model.TeamCount</strong> / @Model.TeamCount</span>
+                        <span>Son güncelleme: @Model.UpdatedAtText</span>
+                    </div>
+                </section>
+            </div>
+
+            <!--  _StandingsSidebar  -->
+            <aside class="col-xl-3" aria-label="Tablo açıklamaları">
+                <div class="side-stack">
+                    <section class="side-card">
+                        <h2 class="side-card__title">Renklerin anlamı</h2>
+                        <ul class="legend-list">
+                            <li><span class="legend-swatch" style="--swatch:var(--blue)"></span><div><strong>Şampiyonlar Ligi</strong><span>1-4. sıra</span></div></li>
+                            <li><span class="legend-swatch" style="--swatch:var(--green)"></span><div><strong>Avrupa kupaları</strong><span>5-6. sıra</span></div></li>
+                            <li><span class="legend-swatch" style="--swatch:var(--red)"></span><div><strong>Düşme hattı</strong><span>@(Model.TeamCount - 2)-@(Model.TeamCount). sıra</span></div></li>
+                        </ul>
+                        <ul class="form-key" aria-label="Form rozetleri">
+                            <li><span class="form-badge form-badge--w">G</span>Galibiyet</li>
+                            <li><span class="form-badge form-badge--d">B</span>Beraberlik</li>
+                            <li><span class="form-badge form-badge--l">M</span>Mağlubiyet</li>
+                        </ul>
+                    </section>
+
+                    <section class="side-card">
+                        <h2 class="side-card__title">Formda olanlar</h2>
+                        <p>Son 5 maçta toplanan puan</p>
+                        <ol class="form-leaders">
+                            @foreach (var t in Model.FormLeaders)
+                            {
+                                var crest = Model.CrestOf(t, "team-crest--sm");
+                                var formPoints = StandingsPageViewModel.FormPoints(t);
+                                var maxPoints = t.Form.Count * 3;
+
+                                <li>
+                                    <partial name="_TeamCrest" model="crest" />
+                                    <span class="team-name">@t.TeamName</span>
+                                    <span class="form-leaders__pts">@formPoints <small>/ @maxPoints</small></span>
+                                    <span class="form-meter" aria-hidden="true"><span style="--w:@StandingsPageViewModel.Percent(formPoints, maxPoints)"></span></span>
+                                </li>
+                            }
+                        </ol>
+                    </section>
+
+                    <section class="side-card note-card">
+                        <h2 class="side-card__title">Sıralama notu</h2>
+                        <p>Puan eşitliğinde averaj dikkate alınır. Averaj da eşitse atılan gol sayısına bakılır.</p>
+                        <p>Son 5 maçta en sağdaki rozet en son oynanan maçtır.</p>
+                    </section>
+                </div>
+            </aside>
+        </div>
+    </div>
+</main>
+
+@section Scripts {
+    <script src="~/js/standings.js" asp-append-version="true"></script>
+}

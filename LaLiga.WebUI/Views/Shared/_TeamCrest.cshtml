@@ -1,0 +1,9 @@
+﻿@model CrestViewModel
+@if (!string.IsNullOrWhiteSpace(Model.LogoUrl))
+{
+    <img class="team-crest @Model.SizeClass" src="@Model.LogoUrl" alt="" aria-hidden="true">
+}
+else
+{
+    <span class="team-crest @Model.SizeClass" style="--crest-a:@Model.ColorA;--crest-b:@Model.ColorB;--crest-ink:@Model.Ink" aria-hidden="true">@Model.Code</span>
+}
