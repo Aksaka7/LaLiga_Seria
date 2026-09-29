@@ -6,7 +6,6 @@ using LaLiga.WebUI.ViewModels;
 
 namespace LaLiga.WebUI.Services
 {
-    // WebUI'nin API ile konuşan tek yeri. Sayfalar HttpClient kullanmaz, bu sınıfı kullanır.
     public class LaLigaApiClient
     {
         // API enum'ları yazı olarak gönderir ("Live", "Finished"); alan adları camelCase
@@ -21,6 +20,8 @@ namespace LaLiga.WebUI.Services
         {
             _http = http;
         }
+
+        //  Okuma 
 
         public Task<List<StandingViewModel>> GetStandingsAsync()
         {
@@ -60,13 +61,58 @@ namespace LaLiga.WebUI.Services
             return GetAsync<List<MatchViewModel>>(url);
         }
 
+        // Takımlar (ada göre sıralı). activeOnly: yalnızca aktif takımlar (maç formundaki seçim listeleri için)
+        public Task<List<TeamViewModel>> GetTeamsAsync(bool activeOnly = false)
+        {
+            return GetAsync<List<TeamViewModel>>(activeOnly ? "api/teams?activeOnly=true" : "api/teams");
+        }
+
+        public Task<TeamViewModel> GetTeamAsync(int id)
+        {
+            return GetAsync<TeamViewModel>($"api/teams/{id}");
+        }
+
+        //  Maç yazma 
+
+        // API 201 ile oluşan maçı döndürür (Id buradan alınır)
+        public async Task<MatchViewModel> CreateMatchAsync(MatchInputModel input)
+        {
+            using var response = await SendAsync(HttpMethod.Post, "api/matches", input);
+            return await ReadAsync<MatchViewModel>(response);
+        }
+
+        // API 204 döner, gövde yok
+        public async Task UpdateMatchAsync(int id, MatchInputModel input)
+        {
+            using var response = await SendAsync(HttpMethod.Put, $"api/matches/{id}", input);
+        }
+
+        public async Task DeleteMatchAsync(int id)
+        {
+            using var response = await SendAsync(HttpMethod.Delete, $"api/matches/{id}");
+        }
+
+        //  Ortak yardımcılar 
+
         private async Task<T> GetAsync<T>(string url)
+        {
+            using var response = await SendAsync(HttpMethod.Get, url);
+            return await ReadAsync<T>(response);
+        }
+
+        // Başarılı yanıtı çağıran alır ve kendisi kapatır (using).
+        private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, object? body = null)
         {
             HttpResponseMessage response;
 
             try
             {
-                response = await _http.GetAsync(url);
+                using var request = new HttpRequestMessage(method, url);
+
+                if (body != null)
+                    request.Content = JsonContent.Create(body, body.GetType(), options: JsonOptions);
+
+                response = await _http.SendAsync(request);
             }
             catch (HttpRequestException)
             {
@@ -78,13 +124,23 @@ namespace LaLiga.WebUI.Services
                 throw new ApiException(HttpStatusCode.GatewayTimeout, "API zamanında yanıt vermedi.");
             }
 
-            using (response)
+            try
             {
                 await EnsureSuccessAsync(response);
-
-                var value = await response.Content.ReadFromJsonAsync<T>(JsonOptions);
-                return value ?? throw new ApiException(HttpStatusCode.BadGateway, "API'den boş yanıt geldi.");
             }
+            catch
+            {
+                response.Dispose();
+                throw;
+            }
+
+            return response;
+        }
+
+        private static async Task<T> ReadAsync<T>(HttpResponseMessage response)
+        {
+            var value = await response.Content.ReadFromJsonAsync<T>(JsonOptions);
+            return value ?? throw new ApiException(HttpStatusCode.BadGateway, "API'den boş yanıt geldi.");
         }
 
         // Başarısız yanıtı { message, errors } biçiminden ApiException'a çevirir
@@ -101,7 +157,7 @@ namespace LaLiga.WebUI.Services
             }
             catch (JsonException)
             {
-                // API JSON dışında bir şey döndürdü (örn. HTML hata sayfası)
+                // API JSON dışında bir şey döndürdü  HTML hata sayfası
             }
             catch (NotSupportedException)
             {
