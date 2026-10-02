@@ -6,6 +6,7 @@ using LaLiga.WebUI.ViewModels;
 
 namespace LaLiga.WebUI.Services
 {
+    // WebUI'nin API ile konuşan tek yeri. Sayfalar HttpClient kullanmaz, bu sınıfı kullanır.
     public class LaLigaApiClient
     {
         // API enum'ları yazı olarak gönderir ("Live", "Finished"); alan adları camelCase
@@ -92,6 +93,25 @@ namespace LaLiga.WebUI.Services
             using var response = await SendAsync(HttpMethod.Delete, $"api/matches/{id}");
         }
 
+        //  Takım yazma 
+
+        public async Task<TeamViewModel> CreateTeamAsync(TeamInputModel input)
+        {
+            using var response = await SendAsync(HttpMethod.Post, "api/teams", input);
+            return await ReadAsync<TeamViewModel>(response);
+        }
+
+        public async Task UpdateTeamAsync(int id, TeamInputModel input)
+        {
+            using var response = await SendAsync(HttpMethod.Put, $"api/teams/{id}", input);
+        }
+
+        // API 409 döner: maçı olan takım silinemez 
+        public async Task DeleteTeamAsync(int id)
+        {
+            using var response = await SendAsync(HttpMethod.Delete, $"api/teams/{id}");
+        }
+
         //  Ortak yardımcılar 
 
         private async Task<T> GetAsync<T>(string url)
@@ -100,9 +120,10 @@ namespace LaLiga.WebUI.Services
             return await ReadAsync<T>(response);
         }
 
-        // Başarılı yanıtı çağıran alır ve kendisi kapatır (using).
+        
         private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, object? body = null)
-        {
+        {// Tüm istekler buradan geçer: bağlantı hatalarını ve başarısız yanıtları ApiException'a çevirir.
+         // Başarılı yanıtı çağıran alır ve kendisi kapatır (using).
             HttpResponseMessage response;
 
             try
@@ -143,9 +164,8 @@ namespace LaLiga.WebUI.Services
             return value ?? throw new ApiException(HttpStatusCode.BadGateway, "API'den boş yanıt geldi.");
         }
 
-        // Başarısız yanıtı { message, errors } biçiminden ApiException'a çevirir
         private static async Task EnsureSuccessAsync(HttpResponseMessage response)
-        {
+        { // Başarısız yanıtını { message, errors } biçiminden ApiException'a çevirir
             if (response.IsSuccessStatusCode)
                 return;
 
@@ -157,7 +177,7 @@ namespace LaLiga.WebUI.Services
             }
             catch (JsonException)
             {
-                // API JSON dışında bir şey döndürdü  HTML hata sayfası
+                // API JSON dışında bir şey döndürdü (örn. HTML hata sayfası)
             }
             catch (NotSupportedException)
             {

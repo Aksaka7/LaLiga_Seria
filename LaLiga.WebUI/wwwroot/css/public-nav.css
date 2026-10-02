@@ -1,0 +1,78 @@
+﻿/* 
+   La Liga - public-nav.css
+   Public sayfalar arası basit üst menü (Puan Durumu / Fikstür)
+   Hocanın tasarımında yok; sayfalar arası geçişi kolaylaştırmak için eklendi.
+    */
+.public-nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 24px;
+    background: #0B1730;
+    border-bottom: 1px solid #1F3358;
+}
+
+.public-nav__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #fff;
+    text-decoration: none;
+}
+
+.public-nav__mark {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(145deg, #5B9BFF, #2E7BFF);
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+    font-size: .9rem;
+    font-weight: 700;
+}
+
+.public-nav__name {
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.public-nav__links {
+    display: flex;
+    gap: 4px;
+}
+
+.public-nav__link {
+    padding: 8px 14px;
+    border-radius: 8px;
+    color: #8B9CC0;
+    font-weight: 600;
+    font-size: .92rem;
+    text-decoration: none;
+    transition: background-color .12s ease, color .12s ease;
+}
+
+    .public-nav__link:hover {
+        background: rgba(255, 255, 255, .06);
+        color: #E9F0FB;
+    }
+
+    .public-nav__link.is-active {
+        background: rgba(46, 123, 255, .18);
+        color: #fff;
+    }
+
+@media (max-width: 575.98px) {
+    .public-nav {
+        padding: 12px 16px;
+    }
+
+    .public-nav__name {
+        display: none;
+    }
+}

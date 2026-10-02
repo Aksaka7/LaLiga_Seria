@@ -1,0 +1,268 @@
+﻿@model AdminTeamsPageViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Takım Yönetimi | La Liga Admin";
+    ViewData["TopbarTitle"] = "Takım Yönetimi";
+    ViewData["Breadcrumb"] = "Yönetim / Takımlar";
+    ViewData["ActiveNav"] = "Teams";
+
+    var tr = new System.Globalization.CultureInfo("tr-TR");
+}
+
+<div class="page-head">
+    <div>
+        <span class="page-eyebrow">La Liga 2026/27</span>
+        <h1 class="page-title">Takım Yönetimi</h1>
+        <p class="page-desc">La Liga kulüplerini görüntüleyebilir, ekleyebilir, düzenleyebilir ve silebilirsiniz.</p>
+    </div>
+    <button type="button" class="btn-a btn-a--primary" data-open-create>
+        <svg class="icon" aria-hidden="true"><use href="#i-plus" /></svg>Yeni Takım Ekle
+    </button>
+</div>
+
+<!--  _LeagueStrip (kompakt lig özeti)  -->
+<section class="league-strip" aria-label="Lig özeti" data-active-count="@Model.ActiveCount" data-max-active="@Model.MaxActive">
+    <div class="strip-item strip-item--green">
+        <span class="strip-icon"><svg class="icon" aria-hidden="true"><use href="#i-shield" /></svg></span>
+        <div><span class="strip-label">Aktif takım</span><span class="strip-value">@Model.ActiveCount <small>/ @Model.MaxActive</small></span></div>
+    </div>
+    <div class="strip-item strip-item--blue">
+        <span class="strip-icon"><svg class="icon" aria-hidden="true"><use href="#i-pin" /></svg></span>
+        <div><span class="strip-label">Temsil edilen şehir</span><span class="strip-value">@Model.CityCount</span></div>
+    </div>
+    <div class="strip-item strip-item--navy">
+        <span class="strip-icon"><svg class="icon" aria-hidden="true"><use href="#i-stadium" /></svg></span>
+        <div><span class="strip-label">Toplam stadyum kapasitesi</span><span class="strip-value">@Model.TotalCapacity.ToString("N0", tr)</span></div>
+    </div>
+    <div class="strip-item strip-item--red">
+        <span class="strip-icon"><svg class="icon" aria-hidden="true"><use href="#i-clock" /></svg></span>
+        <div>
+            <span class="strip-label">En köklü kulüp</span>
+            <span class="strip-value">
+                @if (Model.Oldest is { } oldest)
+                {
+                    @oldest.Name
+
+                    <small>@oldest.FoundedYear</small>
+                }
+                else
+                {
+                    @:-
+                }
+            </span>
+        </div>
+    </div>
+</section>
+
+<!--  _TeamTable (filtre + tablo)  -->
+<section class="card-a" aria-label="Takım listesi">
+    <form class="filter-bar" method="get" asp-action="Teams" role="search">
+        <div class="filter-search">
+            <label class="field-label" for="f-q">Takım Ara</label>
+            <div class="input-icon">
+                <svg class="icon" aria-hidden="true"><use href="#i-search" /></svg>
+                <input class="input-a" id="f-q" name="q" type="search" placeholder="Takım, şehir veya stadyum" autocomplete="off" value="@Model.FilterQuery">
+            </div>
+        </div>
+        <div>
+            <label class="field-label" for="f-region">Bölge</label>
+            <select class="select-a" id="f-region" name="region">
+                <option value="">Tüm Bölgeler</option>
+                @foreach (var opt in AdminTeamsPageViewModel.RegionOptions)
+                {
+                    <option value="@opt.Value" selected="@(opt.Value == Model.FilterRegion)">@opt.Label</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label class="field-label" for="f-status">Durum</label>
+            <select class="select-a" id="f-status" name="status">
+                <option value="">Tümü</option>
+                <option value="active" selected="@(Model.FilterStatus == "active")">Aktif (La Liga)</option>
+                <option value="inactive" selected="@(Model.FilterStatus == "inactive")">Pasif</option>
+            </select>
+        </div>
+        <div class="filter-actions">
+            <a class="btn-a btn-a--ghost" href="/Admin/Teams">Temizle</a>
+            <button type="submit" class="btn-a btn-a--secondary">Filtrele</button>
+        </div>
+        <input type="hidden" name="sort" value="@Model.SortKey">
+        <input type="hidden" name="dir" value="@Model.SortDir">
+    </form>
+
+    <div class="table-scroll">
+        <table class="team-table">
+            <caption class="visually-hidden">La Liga takım listesi</caption>
+            <thead>
+                <tr>
+                    <th scope="col" class="col-id" aria-sort="@Model.AriaSort("id")"><a class="sort-btn" href="@Model.SortUrl("id")">ID</a></th>
+                    <th scope="col" aria-sort="@Model.AriaSort("name")"><a class="sort-btn" href="@Model.SortUrl("name")">Takım</a></th>
+                    <th scope="col">Şehir / Bölge</th>
+                    <th scope="col">Stadyum</th>
+                    <th scope="col" class="col-num" aria-sort="@Model.AriaSort("capacity")"><a class="sort-btn" href="@Model.SortUrl("capacity")">Kapasite</a></th>
+                    <th scope="col" class="col-num" aria-sort="@Model.AriaSort("founded")"><a class="sort-btn" href="@Model.SortUrl("founded")">Kuruluş</a></th>
+                    <th scope="col">Renkler</th>
+                    <th scope="col">Durum</th>
+                    <th scope="col" class="col-actions">İşlemler</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Empty)
+                {
+                    <tr class="table-empty">
+                        <td colspan="9"><strong>Takım bulunamadı</strong>Filtreleri değiştirin ya da Temizle ile tüm takımları gösterin.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var t in Model.Teams)
+                    {
+                        var crest = Model.Crest(t);
+
+                        <tr data-id="@t.Id" data-name="@t.Name" data-code="@t.Code" data-logo-url="@t.LogoUrl" data-city="@t.City"
+                            data-region="@t.Region" data-stadium="@t.Stadium" data-capacity="@t.Capacity" data-founded="@t.FoundedYear"
+                            data-color-a="@t.ColorA" data-color-b="@t.ColorB" data-active="@t.IsActive.ToString().ToLowerInvariant()"
+                            class="@(t.IsActive ? "" : "is-inactive")">
+                            <td class="col-id">@t.Id</td>
+                            <td>
+                                <div class="team-cell">
+                                    <partial name="_TeamCrest" model="crest" />
+                                    <div><span class="team-name">@t.Name</span><span class="team-code">@t.Code</span></div>
+                                </div>
+                            </td>
+                            <td class="city-cell">@t.City<small><span class="region region--@Model.RegionSlug(t.Region)">@Model.RegionLabel(t.Region)</span></small></td>
+                            <td>@t.Stadium</td>
+                            <td class="col-num">@t.Capacity.ToString("N0", tr)</td>
+                            <td class="col-num">@t.FoundedYear</td>
+                            <td><span class="swatches" title="@t.ColorA / @t.ColorB"><span class="swatch" style="--c:@t.ColorA"></span><span class="swatch" style="--c:@t.ColorB"></span></span></td>
+                            <td><span class="badge-a badge-a--@(t.IsActive ? "active" : "inactive")">@(t.IsActive ? "Aktif" : "Pasif")</span></td>
+                            <td class="col-actions">
+                                <div class="row-actions">
+                                    <button type="button" class="act-btn" data-edit="@t.Id" title="Düzenle" aria-label="Düzenle: @t.Name"><svg class="icon" aria-hidden="true"><use href="#i-edit" /></svg></button>
+                                    <button type="button" class="act-btn act-btn--danger" data-delete="@t.Id" title="Sil" aria-label="Sil: @t.Name"><svg class="icon" aria-hidden="true"><use href="#i-trash" /></svg></button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="table-foot">
+        <span>@Model.FooterText</span>
+        <span>La Liga'da en fazla @Model.MaxActive aktif takım bulunabilir</span>
+    </div>
+</section>
+
+<!--  _CreateTeamModal (ekleme + düzenleme)  -->
+<dialog class="modal-a modal-a--wide" id="team-modal" aria-labelledby="team-modal-title">
+    <form data-team-form novalidate>
+        <div class="modal-head">
+            <h2 class="modal-title" id="team-modal-title">Yeni Takım Ekle</h2>
+            <button type="button" class="icon-btn" data-modal-close aria-label="Kapat"><svg class="icon" aria-hidden="true"><use href="#i-x" /></svg></button>
+        </div>
+        <div class="modal-body">
+            <div class="form-alert" data-form-alert role="alert">Lütfen işaretli alanları kontrol edin.</div>
+
+            <div class="crest-preview" aria-live="polite">
+                <span class="team-crest team-crest--lg" data-preview-crest aria-hidden="true">---</span>
+                <div>
+                    <span class="crest-preview__name" data-preview-name>Takım adı</span>
+                    <span class="crest-preview__meta" data-preview-meta>Şehir, stadyum</span>
+                </div>
+            </div>
+
+            <input type="hidden" name="id">
+            <div class="form-grid">
+                <div class="form-field" data-field="name">
+                    <label class="field-label" for="t-name">Takım Adı <span class="req">*</span></label>
+                    <input class="input-a" id="t-name" name="name" type="text" maxlength="40" placeholder="Örn. Sevilla" autocomplete="off">
+                    <p class="field-error"></p>
+                </div>
+                <div class="form-field" data-field="code">
+                    <label class="field-label" for="t-code">Kısa Ad <span class="req">*</span></label>
+                    <input class="input-a code-input" id="t-code" name="code" type="text" maxlength="3" placeholder="SEV" autocomplete="off">
+                    <p class="field-hint">Tabloda ve armada görünen 3 harfli kod (yalnız A-Z)</p>
+                    <p class="field-error"></p>
+                </div>
+                <div class="form-field" data-field="city">
+                    <label class="field-label" for="t-city">Şehir <span class="req">*</span></label>
+                    <input class="input-a" id="t-city" name="city" type="text" placeholder="Örn. Sevilla" autocomplete="off">
+                    <p class="field-error"></p>
+                </div>
+                <div class="form-field" data-field="region">
+                    <label class="field-label" for="t-region">Bölge <span class="req">*</span></label>
+                    <select class="select-a" id="t-region" name="region">
+                        <option value="">Bölge seçin</option>
+                        @foreach (var opt in AdminTeamsPageViewModel.RegionOptions)
+                        {
+                            <option value="@opt.Value">@opt.Label</option>
+                        }
+                    </select>
+                    <p class="field-error"></p>
+                </div>
+                <div class="form-field span-2" data-field="stadium">
+                    <label class="field-label" for="t-stadium">Stadyum <span class="req">*</span></label>
+                    <input class="input-a" id="t-stadium" name="stadium" type="text" placeholder="Örn. Ramón Sánchez-Pizjuán" autocomplete="off">
+                    <p class="field-error"></p>
+                </div>
+                <div class="form-field" data-field="capacity">
+                    <label class="field-label" for="t-capacity">Stadyum Kapasitesi <span class="req">*</span></label>
+                    <input class="input-a" id="t-capacity" name="capacity" type="number" min="1000" max="100000" step="1" inputmode="numeric" placeholder="Örn. 43883">
+                    <p class="field-error"></p>
+                </div>
+                <div class="form-field" data-field="founded">
+                    <label class="field-label" for="t-founded">Kuruluş Yılı <span class="req">*</span></label>
+                    <input class="input-a" id="t-founded" name="founded" type="number" min="1850" max="2026" step="1" inputmode="numeric" placeholder="Örn. 1890">
+                    <p class="field-error"></p>
+                </div>
+                <div class="form-field span-2" data-field="colors">
+                    <span class="field-label">Kulüp Renkleri <span class="req">*</span></span>
+                    <div class="color-row">
+                        <label class="color-input">
+                            <input type="color" name="colorA" value="#1E5BD8" aria-label="Ana renk">
+                            <span>Ana renk <code data-color-a>#1E5BD8</code></span>
+                        </label>
+                        <label class="color-input">
+                            <input type="color" name="colorB" value="#FFFFFF" aria-label="İkinci renk">
+                            <span>İkinci renk <code data-color-b>#FFFFFF</code></span>
+                        </label>
+                    </div>
+                    <p class="field-error"></p>
+                </div>
+                <div class="form-field span-2" data-field="status">
+                    <label class="field-label" for="t-status">Durum</label>
+                    <select class="select-a" id="t-status" name="status">
+                        <option value="active">Aktif (La Liga'da oynuyor)</option>
+                        <option value="inactive">Pasif</option>
+                    </select>
+                    <p class="field-hint" data-status-hint></p>
+                    <p class="field-error"></p>
+                </div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button type="button" class="btn-a btn-a--secondary" data-modal-close>Vazgeç</button>
+            <button type="submit" class="btn-a btn-a--primary" data-submit-label>Kaydet</button>
+        </div>
+    </form>
+</dialog>
+
+<!-- Silme onayı -->
+<dialog class="modal-a modal-a--sm" id="delete-modal" aria-labelledby="delete-modal-title">
+    <form method="dialog">
+        <div class="modal-head">
+            <h2 class="modal-title" id="delete-modal-title">Takımı sil</h2>
+            <button type="submit" value="cancel" class="icon-btn" aria-label="Kapat"><svg class="icon" aria-hidden="true"><use href="#i-x" /></svg></button>
+        </div>
+        <div class="modal-body"><p class="confirm-text" data-delete-text></p></div>
+        <div class="modal-foot">
+            <button type="submit" value="cancel" class="btn-a btn-a--secondary">Vazgeç</button>
+            <button type="submit" value="confirm" class="btn-a btn-a--danger">Evet, sil</button>
+        </div>
+    </form>
+</dialog>
+
+@section Scripts {
+    <script src="~/js/admin-teams.js" asp-append-version="true"></script>
+}

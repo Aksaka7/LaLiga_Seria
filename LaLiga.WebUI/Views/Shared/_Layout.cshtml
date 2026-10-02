@@ -8,9 +8,23 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+    <link rel="stylesheet" href="~/css/public-nav.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="@ViewData["BodyClass"]">
+    @{
+        var activeController = ViewContext.RouteData.Values["controller"]?.ToString();
+    }
+    <header class="public-nav">
+        <a class="public-nav__brand" href="/Standings">
+            <span class="public-nav__mark" aria-hidden="true">LL</span>
+            <span class="public-nav__name">La Liga</span>
+        </a>
+        <nav class="public-nav__links" aria-label="Ana menü">
+            <a class="public-nav__link @(activeController == "Standings" ? "is-active" : "")" href="/Standings">Puan Durumu</a>
+            <a class="public-nav__link @(activeController == "Fixtures" ? "is-active" : "")" href="/Fixtures">Fikstür</a>
+        </nav>
+    </header>
     @RenderBody()
     @await RenderSectionAsync("Scripts", required: false)
 </body>
